@@ -39,7 +39,7 @@ namespace SketchBook {
 		protected override void Dispose( bool disposing ) {
 			if ( disposing ) {
 				RTS.SyncPluginCollection.Remove(this);
-				using ( RTS ) RTS = null;
+				using ( RTS ) {}
 			}
 			base.Dispose(disposing);
 		}
@@ -51,7 +51,7 @@ namespace SketchBook {
 			fx.TranslateTransform( ClientSize.Width/2f, ClientSize.Height/2f );
 			if ( CurrentStroke != null ) CurrentStroke.DrawTo(fx);
 
-#if DEBUG
+#if true
 			int y = 10;
 			Action<string> writeln = s => {
 				TextRenderer.DrawText( fx, s, Font, new Point(10,y), ForeColor, BackColor );
