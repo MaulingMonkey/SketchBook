@@ -7,15 +7,18 @@ using Microsoft.StylusInput.PluginData;
 
 namespace SketchBook {
 	[System.ComponentModel.DesignerCategory("")]
-	class PaperForm : Form, IStylusSyncPlugin {
-		Book      Book = Book.CreateOrLoad( Path.Combine(Application.UserAppDataPath,"default.book") );
+	class SketchForm : Form, IStylusSyncPlugin {
+		Book      Book;
 		PenStroke CurrentStroke = null;
 		PointF ToCanvasCoordinate( PointF screencoord ) { return new PointF( screencoord.X - ClientSize.Width/2, screencoord.Y - ClientSize.Height/2 ); }
 		float DpiX, DpiY;
 
-		public PaperForm() {
+		RealTimeStylus RTS;
+		public SketchForm() {
+			Book = Book.CreateOrLoad( Path.Combine(Application.UserAppDataPath,"default.book") );
 			BackColor       = Color.White;
 			DoubleBuffered  = true;
+			ForeColor       = Color.Gray;
 			FormBorderStyle = FormBorderStyle.None;
 			StartPosition   = FormStartPosition.CenterScreen;
 			WindowState     = FormWindowState.Maximized;
@@ -23,9 +26,17 @@ namespace SketchBook {
 				DpiX = fx.DpiX;
 				DpiY = fx.DpiY;
 			}
-			var rts = new RealTimeStylus(this,true);
-			rts.SyncPluginCollection.Add(this);
-			rts.Enabled = true;
+			RTS = new RealTimeStylus(this,true);
+			RTS.SyncPluginCollection.Add(this);
+			RTS.Enabled = true;
+		}
+
+		protected override void Dispose( bool disposing ) {
+			if ( disposing ) {
+				RTS.SyncPluginCollection.Remove(this);
+				using ( RTS ) RTS = null;
+			}
+			base.Dispose(disposing);
 		}
 
 		protected override void OnPaint( PaintEventArgs e ) {
@@ -34,6 +45,17 @@ namespace SketchBook {
 			Book.OpenPage.DrawTo( fx, ClientSize.Width, ClientSize.Height );
 			fx.TranslateTransform( ClientSize.Width/2f, ClientSize.Height/2f );
 			if ( CurrentStroke != null ) CurrentStroke.DrawTo(fx);
+
+#if DEBUG
+			int y = 10;
+			Action<string> writeln = s => {
+				TextRenderer.DrawText( fx, s, Font, new Point(10,y), ForeColor, BackColor );
+				y += TextRenderer.MeasureText( s, Font ).Height;
+			};
+			writeln(string.Format("Book    Pages: {0}    Size: {1}", Book.Pages.Count, Pretty.Bytes(Book.SizeInBytes) ));
+			if ( Book.OpenPage!=null ) writeln(string.Format("Page    Strokes: {0}", Book.OpenPage._DebugStats_StrokesCount ));
+#endif
+
 			base.OnPaint(e);
 		}
 
@@ -47,6 +69,8 @@ namespace SketchBook {
 			case Keys.Control | Keys.Z: Book.OpenPage.Undo(); Book.SaveToDisk(); Invalidate(); break;
 			case Keys.Control | Keys.Y: Book.OpenPage.Redo(); Book.SaveToDisk(); Invalidate(); break;
 			case Keys.Control | Keys.R: Book.OpenPage.Redo(); Book.SaveToDisk(); Invalidate(); break;
+			case Keys.Left:  Book.PreviousPage(); Invalidate(); break;
+			case Keys.Right: Book.NextPage();     Invalidate(); break;
 			}
 			base.OnKeyDown( e );
 		}
@@ -101,7 +125,7 @@ namespace SketchBook {
 		void IStylusSyncPlugin.TabletRemoved( RealTimeStylus sender, TabletRemovedData data ) {}
 
 		[STAThread] static void Main() {
-			Application.Run( new PaperForm() );
+			Application.Run( new SketchForm() );
 		}
 	}
 }
