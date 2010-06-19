@@ -28,7 +28,12 @@ namespace SketchBook {
 			}
 			RTS = new RealTimeStylus(this,true);
 			RTS.SyncPluginCollection.Add(this);
+		}
+
+		protected override void OnLoad( EventArgs e ) {
 			RTS.Enabled = true;
+			Invalidate();
+			base.OnLoad(e);
 		}
 
 		protected override void Dispose( bool disposing ) {
@@ -55,7 +60,13 @@ namespace SketchBook {
 			writeln(string.Format("Book    Pages: {0}    Size: {1}", Book.Pages.Count, Pretty.Bytes(Book.SizeInBytes) ));
 			if ( Book.OpenPage!=null ) writeln(string.Format("Page    Strokes: {0}", Book.OpenPage._DebugStats_StrokesCount ));
 #endif
+			fx.ResetTransform();
 
+			if ( !RTS.Enabled )
+			using ( var font = new Font("Arial Black",24f) )
+			{
+				TextRenderer.DrawText( fx, "Enabling stylus, please wait...", font, ClientRectangle, Color.Black, BackColor, TextFormatFlags.VerticalCenter | TextFormatFlags.HorizontalCenter );
+			}
 			base.OnPaint(e);
 		}
 
