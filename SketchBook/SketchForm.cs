@@ -128,13 +128,15 @@ namespace SketchBook {
 		void IStylusSyncPlugin.Error( RealTimeStylus sender, ErrorData data ) {}
 		void IStylusSyncPlugin.InAirPackets( RealTimeStylus sender, InAirPacketsData data ) {}
 		void IStylusSyncPlugin.Packets( RealTimeStylus sender, PacketsData data ) {
-			if ( CurrentStroke != null )
-			for ( int i=0 ; i<data.Count ; i += data.PacketPropertyCount )
-			{
-				var point = new PointF(data[i+0]*DpiX/2540f, data[i+1]*DpiY/2540f);
-				CurrentStroke.Points.Add(ToCanvasCoordinate(point));
-			}
-			Invalidate();
+			BeginInvoke(new Action(()=>{
+				if ( CurrentStroke != null )
+				for ( int i=0 ; i<data.Count ; i += data.PacketPropertyCount )
+				{
+					var point = new PointF(data[i+0]*DpiX/2540f, data[i+1]*DpiY/2540f);
+					CurrentStroke.Points.Add(ToCanvasCoordinate(point));
+				}
+				Invalidate();
+			}));
 		}
 		void IStylusSyncPlugin.RealTimeStylusDisabled( RealTimeStylus sender, RealTimeStylusDisabledData data ) {}
 		void IStylusSyncPlugin.RealTimeStylusEnabled( RealTimeStylus sender, RealTimeStylusEnabledData data ) {}
