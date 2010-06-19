@@ -34,9 +34,9 @@ namespace SketchBook {
 
 		protected override void OnKeyDown( KeyEventArgs e ) {
 			switch ( e.KeyData ) {
-			case Keys.Control | Keys.Z: Book.OpenPage.Undo(); Invalidate(); break;
-			case Keys.Control | Keys.Y: Book.OpenPage.Redo(); Invalidate(); break;
-			case Keys.Control | Keys.R: Book.OpenPage.Redo(); Invalidate(); break;
+			case Keys.Control | Keys.Z: Book.OpenPage.Undo(); Book.SaveToDisk(); Invalidate(); break;
+			case Keys.Control | Keys.Y: Book.OpenPage.Redo(); Book.SaveToDisk(); Invalidate(); break;
+			case Keys.Control | Keys.R: Book.OpenPage.Redo(); Book.SaveToDisk(); Invalidate(); break;
 			}
 			base.OnKeyDown( e );
 		}

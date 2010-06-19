@@ -35,6 +35,11 @@ namespace SketchBook {
 		}
 
 		public void AddStroke( PenStroke stroke ) {
+			RedoHistory.Clear();
+			DoAddStroke(stroke);
+		}
+
+		void DoAddStroke( PenStroke stroke ) {
 			Strokes.Add( stroke );
 			if ( Cache != null ) using ( var fx = Graphics.FromImage(Cache) ) {
 				fx.TranslateTransform( Cache.Width/2f, Cache.Height/2f );
@@ -86,7 +91,7 @@ namespace SketchBook {
 				SystemSounds.Beep.Play();
 				return;
 			}
-			AddStroke(RedoHistory[RedoHistory.Count-1]);
+			DoAddStroke(RedoHistory[RedoHistory.Count-1]);
 			RedoHistory.RemoveAt(RedoHistory.Count-1);
 		}
 	}
