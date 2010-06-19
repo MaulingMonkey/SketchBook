@@ -4,6 +4,8 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Media;
+using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 
 namespace SketchBook {
@@ -25,7 +27,12 @@ namespace SketchBook {
 
 	[Serializable] class Page {
 		readonly List<PenStroke> Strokes = new List<PenStroke>();
+		[OptionalField] List<PenStroke> RedoHistory = new List<PenStroke>();
 		[NonSerialized] Bitmap Cache;
+
+		[OnDeserialized] void FixupAfterDeserialized( StreamingContext sc ) {
+			if ( RedoHistory == null ) RedoHistory = new List<PenStroke>();
+		}
 
 		public void AddStroke( PenStroke stroke ) {
 			Strokes.Add( stroke );
@@ -35,28 +42,52 @@ namespace SketchBook {
 			}
 		}
 
+		private void RedrawCache() {
+			if ( Cache != null)
+			using ( var fx = Graphics.FromImage(Cache) )
+			{
+				fx.Clear( Color.White );
+				fx.TranslateTransform( Cache.Width/2f, Cache.Height/2f );
+				foreach ( var stroke in Strokes ) stroke.DrawTo(fx);
+			}
+		}
+
 		public void DrawTo( Graphics rfx, int w, int h ) {
 			if (w%2==1) ++w;
 			if (h%2==1) ++h;
 
 			if ( Cache == null ) {
 				Cache = new Bitmap(w,h,PixelFormat.Format32bppArgb);
-				using ( var cfx = Graphics.FromImage(Cache) ) {
-					cfx.TranslateTransform( Cache.Width/2f, Cache.Height/2f );
-					foreach ( var stroke in Strokes ) stroke.DrawTo(cfx);
-				}
+				RedrawCache();
 			} else if ( Cache.Width < w || Cache.Height < h ) {
 				var oldw = Cache.Width;
 				var oldh = Cache.Height;
 				Cache.Dispose();
 				Cache = new Bitmap(Math.Max(oldw,w),Math.Max(oldh,h),PixelFormat.Format32bppArgb);
-				using ( var cfx = Graphics.FromImage(Cache) ) {
-					cfx.TranslateTransform( Cache.Width/2f, Cache.Height/2f );
-					foreach ( var stroke in Strokes ) stroke.DrawTo(cfx);
-				}
+				RedrawCache();
 			}
-
 			rfx.DrawImage( Cache, (w-Cache.Width)/2, (h-Cache.Height)/2, Cache.Width, Cache.Height );
+		}
+
+		public void Undo() {
+			if ( Strokes.Count <= 0 ) {
+				SystemSounds.Beep.Play();
+				return;
+			}
+			RedoHistory.Add( Strokes[Strokes.Count-1] );
+			Strokes.RemoveAt(Strokes.Count-1);
+			//RedrawCache();
+			using ( Cache ) {}
+			Cache = null;
+		}
+
+		public void Redo() {
+			if ( RedoHistory.Count <= 0 ) {
+				SystemSounds.Beep.Play();
+				return;
+			}
+			AddStroke(RedoHistory[RedoHistory.Count-1]);
+			RedoHistory.RemoveAt(RedoHistory.Count-1);
 		}
 	}
 
