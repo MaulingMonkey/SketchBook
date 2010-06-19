@@ -91,6 +91,19 @@ namespace SketchBook {
 			case MouseButtons.Left:
 				CurrentStroke = new PenStroke() { Points = { ToCanvasCoordinate(e.Location) } };
 				break;
+			case MouseButtons.Right:
+				if ( e.X < 20 ) {
+					Book.PreviousPage();
+					Invalidate();
+				} else if ( e.X > ClientSize.Width-20 ) {
+					if ( e.Y < 20 ) {
+						Close();
+					} else {
+						Book.NextPage();
+						Invalidate();
+					}
+				}
+				break;
 			}
 			Invalidate();
 			base.OnMouseDown(e);
