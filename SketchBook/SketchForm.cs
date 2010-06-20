@@ -6,6 +6,7 @@ using Microsoft.StylusInput;
 using Microsoft.StylusInput.PluginData;
 using System.Collections.Generic;
 using System.Linq;
+using System.Diagnostics;
 
 namespace SketchBook {
 	[System.ComponentModel.DesignerCategory("")]
@@ -42,23 +43,28 @@ namespace SketchBook {
 		protected override void OnPaint( PaintEventArgs e ) {
 			var fx = e.Graphics;
 
-			Book.OpenPage.DrawTo( fx, ClientSize.Width, ClientSize.Height );
-			fx.TranslateTransform( ClientSize.Width/2f, ClientSize.Height/2f );
-			//if ( CurrentStroke != null ) CurrentStroke.DrawTo(fx);
 			var stroke = SMM.NextStroke;
-			if ( stroke != null ) {
-				if ( stroke.Completed ) SMM.RemoveStroke();
+			bool save = false;
+			while ( stroke != null && stroke.Completed ) {
+				SMM.RemoveStroke();
 
 				switch ( stroke.MouseButtons ) {
 				case MouseButtons.Left:
 					var ps = new PenStroke() { Points = stroke.Points.Select(p=>ToCanvasCoordinate(p)).ToList() };
-					if ( stroke.Completed ) {
-						Book.OpenPage.AddStroke(ps);
-						Book.SaveToDisk();
-					}
+					Book.OpenPage.AddStroke(ps);
+					save = true;
 					ps.DrawTo(fx);
 					break;
 				}
+				stroke = SMM.NextStroke;
+			}
+			if (save) Book.SaveToDisk();
+
+			Book.OpenPage.DrawTo( fx, ClientSize.Width, ClientSize.Height );
+			fx.TranslateTransform( ClientSize.Width/2f, ClientSize.Height/2f );
+			if ( stroke != null ) {
+				Debug.Assert(!stroke.Completed);
+				new PenStroke() { Points = stroke.Points.Select(p=>ToCanvasCoordinate(p)).ToList() }.DrawTo(fx);
 			}
 
 			int y = 10;
