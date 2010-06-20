@@ -4,6 +4,8 @@ using System.IO;
 using System.Windows.Forms;
 using Microsoft.StylusInput;
 using Microsoft.StylusInput.PluginData;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace SketchBook {
 	[System.ComponentModel.DesignerCategory("")]
@@ -88,9 +90,6 @@ namespace SketchBook {
 
 		protected override void OnMouseDown( MouseEventArgs e ) {
 			switch ( e.Button ) {
-			case MouseButtons.Left:
-				CurrentStroke = new PenStroke() { Points = { ToCanvasCoordinate(e.Location) } };
-				break;
 			case MouseButtons.Right:
 				if ( e.X < 20 ) {
 					Book.PreviousPage();
@@ -113,9 +112,6 @@ namespace SketchBook {
 			if ( CurrentStroke != null ) CurrentStroke.Points.Add( ToCanvasCoordinate(e.Location) );
 			switch ( e.Button ) {
 			case MouseButtons.Left:
-				Book.OpenPage.AddStroke(CurrentStroke);
-				CurrentStroke = null;
-				Book.SaveToDisk();
 				break;
 			}
 			Invalidate();
@@ -123,7 +119,11 @@ namespace SketchBook {
 		}
 
 		// http://msdn.microsoft.com/en-us/library/microsoft.stylusinput.stylussyncplugincollection_members(v=VS.90).aspx
-		DataInterestMask IStylusSyncPlugin.DataInterest { get { return DataInterestMask.Packets; }}
+		class StylusState {
+			public bool[] Buttons = new bool[0];
+		}
+		Dictionary<Stylus,StylusState> StylusStates = new Dictionary<Stylus,StylusState>();
+		DataInterestMask IStylusSyncPlugin.DataInterest { get { return DataInterestMask.Packets | DataInterestMask.StylusButtonDown | DataInterestMask.StylusButtonUp | DataInterestMask.StylusDown | DataInterestMask.StylusUp; }}
 		void IStylusSyncPlugin.CustomStylusDataAdded( RealTimeStylus sender, CustomStylusData data ) {}
 		void IStylusSyncPlugin.Error( RealTimeStylus sender, ErrorData data ) {}
 		void IStylusSyncPlugin.InAirPackets( RealTimeStylus sender, InAirPacketsData data ) {}
@@ -133,19 +133,69 @@ namespace SketchBook {
 				for ( int i=0 ; i<data.Count ; i += data.PacketPropertyCount )
 				{
 					var point = new PointF(data[i+0]*DpiX/2540f, data[i+1]*DpiY/2540f);
-					CurrentStroke.Points.Add(ToCanvasCoordinate(point));
+					if ( point != CurrentStroke.Points.LastOrDefault() ) CurrentStroke.Points.Add(ToCanvasCoordinate(point));
 				}
 				Invalidate();
 			}));
 		}
 		void IStylusSyncPlugin.RealTimeStylusDisabled( RealTimeStylus sender, RealTimeStylusDisabledData data ) {}
 		void IStylusSyncPlugin.RealTimeStylusEnabled( RealTimeStylus sender, RealTimeStylusEnabledData data ) {}
-		void IStylusSyncPlugin.StylusButtonDown( RealTimeStylus sender, StylusButtonDownData data ) {}
-		void IStylusSyncPlugin.StylusButtonUp( RealTimeStylus sender, StylusButtonUpData data ) {}
-		void IStylusSyncPlugin.StylusDown( RealTimeStylus sender, StylusDownData data ) {}
+		void IStylusSyncPlugin.StylusButtonDown( RealTimeStylus sender, StylusButtonDownData data ) {
+			BeginInvoke(new Action(()=>{
+				var stylus = data.Stylus;
+				if (!StylusStates.ContainsKey(stylus)) StylusStates.Add(stylus,new StylusState());
+				var state = StylusStates[stylus];
+
+				if ( stylus.Buttons.Count > state.Buttons.Length ) {
+					var buttons = new bool[stylus.Buttons.Count];
+					Array.Copy(state.Buttons,buttons,state.Buttons.Length);
+					state.Buttons = buttons;
+				}
+				state.Buttons[data.ButtonIndex] = true;
+			}));
+		}
+		void IStylusSyncPlugin.StylusButtonUp( RealTimeStylus sender, StylusButtonUpData data ) {
+			BeginInvoke(new Action(()=>{
+				var stylus = data.Stylus;
+				if (!StylusStates.ContainsKey(stylus)) StylusStates.Add(stylus,new StylusState());
+				var state = StylusStates[stylus];
+
+				if ( stylus.Buttons.Count > state.Buttons.Length ) {
+					var buttons = new bool[stylus.Buttons.Count];
+					Array.Copy(state.Buttons,buttons,state.Buttons.Length);
+					state.Buttons = buttons;
+				}
+				state.Buttons[data.ButtonIndex] = false;
+			}));
+		}
+		void IStylusSyncPlugin.StylusDown( RealTimeStylus sender, StylusDownData data ) {
+			BeginInvoke(new Action(()=>{
+				var stylus = data.Stylus;
+				if (!StylusStates.ContainsKey(stylus)) StylusStates.Add(stylus,new StylusState());
+				var state = StylusStates[stylus];
+
+				if ( state.Buttons[0] && !state.Buttons.Skip(1).Any(b=>b) && CurrentStroke == null ) CurrentStroke = new PenStroke();
+				if ( CurrentStroke != null ) for ( int i=0 ; i<data.Count ; i += data.PacketPropertyCount ) {
+					var point = new PointF(data[i+0]*DpiX/2540f, data[i+1]*DpiY/2540f);
+					if ( point != CurrentStroke.Points.LastOrDefault() ) CurrentStroke.Points.Add(ToCanvasCoordinate(point));
+				}
+				Invalidate();
+			}));
+		}
 		void IStylusSyncPlugin.StylusInRange( RealTimeStylus sender, StylusInRangeData data ) {}
 		void IStylusSyncPlugin.StylusOutOfRange( RealTimeStylus sender, StylusOutOfRangeData data ) {}
-		void IStylusSyncPlugin.StylusUp( RealTimeStylus sender, StylusUpData data ) {}
+		void IStylusSyncPlugin.StylusUp( RealTimeStylus sender, StylusUpData data ) {
+			if ( CurrentStroke != null ) BeginInvoke(new Action(()=>{
+				for ( int i=0 ; i<data.Count ; i += data.PacketPropertyCount ) {
+					var point = new PointF(data[i+0]*DpiX/2540f, data[i+1]*DpiY/2540f);
+					if ( point != CurrentStroke.Points.LastOrDefault() ) CurrentStroke.Points.Add(ToCanvasCoordinate(point));
+				}
+				Book.OpenPage.AddStroke(CurrentStroke);
+				CurrentStroke = null;
+				Book.SaveToDisk();
+				Invalidate();
+			}));
+		}
 		void IStylusSyncPlugin.SystemGesture( RealTimeStylus sender, SystemGestureData data ) {}
 		void IStylusSyncPlugin.TabletAdded( RealTimeStylus sender, TabletAddedData data ) {}
 		void IStylusSyncPlugin.TabletRemoved( RealTimeStylus sender, TabletRemovedData data ) {}
