@@ -43,34 +43,57 @@ namespace SketchBook {
 		public int Debug_MouseStrokes  { get { return MouseStrokes .Count; }}
 		public int Debug_StylusStrokes { get { return StylusStrokes.Count; }}
 
+		float Dist2( PointF a, PointF b ) {
+			var dx = a.X-b.X;
+			var dy = a.Y-b.Y;
+			return dx*dx+dy*dy;
+		}
+
 		public Stroke NextStroke { get {
-			var mouse_stroke  = MouseStrokes .Count>0 ? MouseStrokes .Peek() : null;
-			var stylus_stroke = StylusStrokes.Count>0 ? StylusStrokes.Peek() : null;
+			lock ( StylusStrokes ) {
+				var mouse_stroke  = MouseStrokes .Count>0 ? MouseStrokes .Peek() : null;
+				var stylus_stroke = StylusStrokes.Count>0 ? StylusStrokes.Peek() : null;
 
-			lock ( StylusStrokes )
-			if ( mouse_stroke != null )
-			{
-				if ( stylus_stroke != null && stylus_stroke.Points.Count>0 ) {
-					// Debug correlation...
-					var mouse_start  = mouse_stroke.Points.First();
-					var stylus_start = stylus_stroke.Points.First();
-					var dx = (mouse_start.X-stylus_start.X);
-					var dy = (mouse_start.Y-stylus_start.Y);
-					var dist2 = (dx*dx)+(dy*dy);
-					Debug.Assert( dist2 < 2*2, "Mouse and Stylus started more than 2 apart" );
-					Debug.WriteLineIf( dist2 > 1*1, "Mouse and Stylus started more than 1 apart" );
-
-					return new Stroke() { MouseButtons = mouse_stroke.MouseButtons, Points = new List<PointF>(stylus_stroke.Points), Completed = mouse_stroke.Completed && stylus_stroke.Completed };
-				} else {
-					// Only mouse data so far...
-					return stylus_stroke;
+				while
+					(  mouse_stroke  != null && mouse_stroke.Points.Count>0
+					&& stylus_stroke != null && stylus_stroke.Points.Count>0
+					&& Dist2(mouse_stroke.Points.First(),stylus_stroke.Points.First()) > 1*1
+					)
+				{
+					// We have a mouse and stylus stroke, but they don't match up!
+					// Reject from the bigger queue and hope that's right.
+					// Assume stylus events are delayed -- if queues are event, reject from the stylus queue.
+					// Known causes include:
+					//   Clicking on a form to focus it causes mouse events but not stylus events
+					if ( MouseStrokes.Count > StylusStrokes.Count ) {
+						MouseStrokes.Dequeue();
+						mouse_stroke = MouseStrokes.Peek();
+					} else {
+						StylusStrokes.Dequeue();
+						stylus_stroke = StylusStrokes.Peek();
+					}
 				}
-			} else if ( StylusStrokes.Count > 0 ) {
-				// Only stylus data so far...
-				return new Stroke() { MouseButtons = stylus_stroke.MouseButtons, Points = new List<PointF>(stylus_stroke.Points) };
-			} else {
-				// No data from mouse or stylus
-				return null;
+
+				if ( mouse_stroke != null ) {
+					if ( stylus_stroke != null && stylus_stroke.Points.Count>0 ) {
+						// Debug correlation...
+						var mouse_start  = mouse_stroke.Points.First();
+						var stylus_start = stylus_stroke.Points.First();
+						var dist2 = Dist2(mouse_stroke.Points.First(),stylus_stroke.Points.First());
+						Debug.Assert( dist2 < 1*1, "Mouse and Stylus started more than 1 apart" );
+
+						return new Stroke() { MouseButtons = mouse_stroke.MouseButtons, Points = new List<PointF>(stylus_stroke.Points), Completed = mouse_stroke.Completed && stylus_stroke.Completed };
+					} else {
+						// Only mouse data so far...
+						return stylus_stroke;
+					}
+				} else if ( StylusStrokes.Count > 0 ) {
+					// Only stylus data so far...
+					return new Stroke() { MouseButtons = stylus_stroke.MouseButtons, Points = new List<PointF>(stylus_stroke.Points) };
+				} else {
+					// No data from mouse or stylus
+					return null;
+				}
 			}
 		}}
 
