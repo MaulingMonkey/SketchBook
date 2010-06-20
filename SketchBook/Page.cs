@@ -12,7 +12,7 @@ namespace SketchBook {
 		public float                 PenWidth = 1f;
 		public Pen CreatePen() { return new Pen(Color.FromArgb(PenColor)) { Width = PenWidth }; }
 		public SmoothingMode         SmoothingMode = SmoothingMode.AntiAlias;
-		public readonly List<PointF> Points        = new List<PointF>(); // relative to center of page
+		public List<PointF>          Points        = new List<PointF>(); // relative to center of page
 		public void DrawTo( Graphics fx ) {
 			if ( Points.Count >= 2 ) {
 				var old_sm = fx.SmoothingMode;
