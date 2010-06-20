@@ -121,7 +121,18 @@ namespace SketchBook {
 		// http://msdn.microsoft.com/en-us/library/microsoft.stylusinput.stylussyncplugincollection_members(v=VS.90).aspx
 		class StylusState {
 			public bool[] Buttons = new bool[0];
+
+			public StylusState( Stylus stylus ) {
+				Buttons = new bool[stylus.Buttons.Count];
+				var names = Enumerable.Range(0,Buttons.Length).Select(i=>stylus.Buttons.GetName(i)).ToList();
+				TipIndex = names.IndexOf(names.First(n=>n.Contains("Tip")));
+				BarrelIndex = names.IndexOf(names.First(n=>n.Contains("Barrel")));
+			}
+			public int TipIndex, BarrelIndex;
+			public bool Tip { get { return Buttons[TipIndex]; } }
+			public bool Barrel { get { return Buttons[BarrelIndex]; } }
 		}
+
 		Dictionary<Stylus,StylusState> StylusStates = new Dictionary<Stylus,StylusState>();
 		DataInterestMask IStylusSyncPlugin.DataInterest { get { return DataInterestMask.Packets | DataInterestMask.StylusButtonDown | DataInterestMask.StylusButtonUp | DataInterestMask.StylusDown | DataInterestMask.StylusUp; }}
 		void IStylusSyncPlugin.CustomStylusDataAdded( RealTimeStylus sender, CustomStylusData data ) {}
@@ -143,7 +154,7 @@ namespace SketchBook {
 		void IStylusSyncPlugin.StylusButtonDown( RealTimeStylus sender, StylusButtonDownData data ) {
 			BeginInvoke(new Action(()=>{
 				var stylus = data.Stylus;
-				if (!StylusStates.ContainsKey(stylus)) StylusStates.Add(stylus,new StylusState());
+				if (!StylusStates.ContainsKey(stylus)) StylusStates.Add(stylus,new StylusState(stylus));
 				var state = StylusStates[stylus];
 
 				if ( stylus.Buttons.Count > state.Buttons.Length ) {
@@ -157,7 +168,7 @@ namespace SketchBook {
 		void IStylusSyncPlugin.StylusButtonUp( RealTimeStylus sender, StylusButtonUpData data ) {
 			BeginInvoke(new Action(()=>{
 				var stylus = data.Stylus;
-				if (!StylusStates.ContainsKey(stylus)) StylusStates.Add(stylus,new StylusState());
+				if (!StylusStates.ContainsKey(stylus)) StylusStates.Add(stylus,new StylusState(stylus));
 				var state = StylusStates[stylus];
 
 				if ( stylus.Buttons.Count > state.Buttons.Length ) {
@@ -171,10 +182,10 @@ namespace SketchBook {
 		void IStylusSyncPlugin.StylusDown( RealTimeStylus sender, StylusDownData data ) {
 			BeginInvoke(new Action(()=>{
 				var stylus = data.Stylus;
-				if (!StylusStates.ContainsKey(stylus)) StylusStates.Add(stylus,new StylusState());
+				if (!StylusStates.ContainsKey(stylus)) StylusStates.Add(stylus,new StylusState(stylus));
 				var state = StylusStates[stylus];
 
-				if ( state.Buttons[0] && !state.Buttons.Skip(1).Any(b=>b) && CurrentStroke == null ) CurrentStroke = new PenStroke();
+				if ( state.Tip && !state.Barrel && CurrentStroke == null ) CurrentStroke = new PenStroke();
 				if ( CurrentStroke != null ) for ( int i=0 ; i<data.Count ; i += data.PacketPropertyCount ) {
 					var point = new PointF(data[i+0]*DpiX/2540f, data[i+1]*DpiY/2540f);
 					if ( point != CurrentStroke.Points.LastOrDefault() ) CurrentStroke.Points.Add(ToCanvasCoordinate(point));
