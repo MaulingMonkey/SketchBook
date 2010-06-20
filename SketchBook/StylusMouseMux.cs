@@ -67,10 +67,10 @@ namespace SketchBook {
 					//   Clicking on a form to focus it causes mouse events but not stylus events
 					if ( MouseStrokes.Count > StylusStrokes.Count ) {
 						MouseStrokes.Dequeue();
-						mouse_stroke = MouseStrokes.Peek();
+						mouse_stroke = MouseStrokes.Count>0 ? MouseStrokes.Peek() : null;
 					} else {
 						StylusStrokes.Dequeue();
-						stylus_stroke = StylusStrokes.Peek();
+						stylus_stroke = StylusStrokes.Count>0 ? StylusStrokes.Peek() : null;
 					}
 				}
 
