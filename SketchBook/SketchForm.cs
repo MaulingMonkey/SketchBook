@@ -52,7 +52,10 @@ namespace SketchBook {
 				switch ( stroke.MouseButtons ) {
 				case MouseButtons.Left:
 					var ps = new PenStroke() { Points = stroke.Points.Select(p=>ToCanvasCoordinate(p)).ToList() };
-					if ( stroke.Completed ) Book.OpenPage.AddStroke(ps);
+					if ( stroke.Completed ) {
+						Book.OpenPage.AddStroke(ps);
+						Book.SaveToDisk();
+					}
 					ps.DrawTo(fx);
 					break;
 				}
