@@ -57,7 +57,7 @@ namespace SketchBook {
 				while
 					(  mouse_stroke  != null && mouse_stroke.Points.Count>0
 					&& stylus_stroke != null && stylus_stroke.Points.Count>0
-					&& Dist2(mouse_stroke.Points.First(),stylus_stroke.Points.First()) > 1*1
+					&& Dist2(mouse_stroke.Points.First(),stylus_stroke.Points.First()) > 2*2
 					)
 				{
 					// We have a mouse and stylus stroke, but they don't match up!
