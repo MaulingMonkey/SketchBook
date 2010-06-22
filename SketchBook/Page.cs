@@ -24,10 +24,18 @@ namespace SketchBook {
 	}
 
 	[Serializable] class Page {
-		readonly List<PenStroke> Strokes = new List<PenStroke>();
+		List<PenStroke> Strokes = new List<PenStroke>();
 		public int _DebugStats_StrokesCount { get { return Strokes.Count; } }
 		[OptionalField] List<PenStroke> RedoHistory = new List<PenStroke>();
 		[NonSerialized] Bitmap Cache;
+
+		public Page Clone() {
+			return new Page()
+				{ Strokes = new List<PenStroke>(Strokes)
+				, RedoHistory = new List<PenStroke>(RedoHistory)
+				, Cache = null
+				};
+		}
 
 		[OnDeserialized] void FixupAfterDeserialized( StreamingContext sc ) {
 			if ( RedoHistory == null ) RedoHistory = new List<PenStroke>();

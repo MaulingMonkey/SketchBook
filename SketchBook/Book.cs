@@ -3,10 +3,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Media;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Linq;
+using System.Threading;
+using System.Runtime.Serialization;
 
 namespace SketchBook {
 	[Serializable] class Book {
-		public readonly List<Page> Pages = new List<Page>() { new Page() };
+		public List<Page> Pages = new List<Page>() { new Page() };
 		int OpenPageIndex = 0;
 		public Page OpenPage { get {
 			return OpenPageIndex==-1 ? null : Pages[OpenPageIndex];
@@ -56,6 +59,34 @@ namespace SketchBook {
 				var bf = new BinaryFormatter();
 				bf.Serialize( stream, this );
 				SizeInBytes = stream.Position;
+			}
+		}
+
+		[OnDeserialized] void FixupBackgroundLock( StreamingContext sc ) { Background = new object(); }
+
+		[NonSerialized] object Background = new object();
+		[NonSerialized] Book SerializeNext;
+		public void BackgroundSaveToDisk() {
+			var clone = new Book()
+				{ Pages = Pages.Select(page=>page.Clone()).ToList()
+				, OpenPageIndex = OpenPageIndex
+				, Path = Path
+				, SizeInBytes = SizeInBytes
+				};
+			lock ( Background ) {
+				bool spawn_bg_worker = SerializeNext==null;
+				if ( spawn_bg_worker ) ThreadPool.QueueUserWorkItem(o=>{
+					Book book = null;
+					lock ( Background ) book = SerializeNext;
+					while ( book != null ) {
+						book.SaveToDisk();
+						lock ( Background ) {
+							SizeInBytes = book.SizeInBytes;
+							SerializeNext = book = (book==SerializeNext) ? null : SerializeNext;
+						}
+					}
+				});
+				SerializeNext = clone;
 			}
 		}
 	}

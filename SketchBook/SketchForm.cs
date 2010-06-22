@@ -40,6 +40,7 @@ namespace SketchBook {
 			base.Dispose(disposing);
 		}
 
+		TimeSpan Profiling_LastSaveTook = TimeSpan.Zero;
 		protected override void OnPaint( PaintEventArgs e ) {
 			var fx = e.Graphics;
 
@@ -58,7 +59,12 @@ namespace SketchBook {
 				}
 				stroke = SMM.NextStroke;
 			}
-			if (save) Book.SaveToDisk();
+			if (save) {
+				//var a = DateTime.Now;
+				Book.BackgroundSaveToDisk();
+				//var b = DateTime.Now;
+				//Profiling_LastSaveTook = b-a;
+			}
 
 			Book.OpenPage.DrawTo( fx, ClientSize.Width, ClientSize.Height );
 			fx.TranslateTransform( ClientSize.Width/2f, ClientSize.Height/2f );
@@ -75,6 +81,7 @@ namespace SketchBook {
 			writeln(string.Format("SMM     Mouse: {0}    Stylus: {1}", SMM.Debug_MouseStrokes, SMM.Debug_StylusStrokes));
 			writeln(string.Format("Book    Pages: {0}    Size: {1}", Book.Pages.Count, Pretty.Bytes(Book.SizeInBytes) ));
 			if ( Book.OpenPage!=null ) writeln(string.Format("Page    Strokes: {0}", Book.OpenPage._DebugStats_StrokesCount ));
+			writeln(string.Format("Timing  Save: {0}s",Profiling_LastSaveTook.TotalSeconds.ToString("F2")));
 			fx.ResetTransform();
 
 			if ( !SMM.Enabled )
