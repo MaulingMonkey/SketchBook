@@ -40,26 +40,42 @@ namespace SketchBook {
 
 		[NonSerialized] string Path;
 		public static Book CreateOrLoad( string path ) {
-			if ( File.Exists( path ) )
-			using ( var stream = File.Open(path,FileMode.Open,FileAccess.Read) )
+			bool anyexisted = false;
+
+			foreach ( var ext in new[] { ".new", "" } )
+			if ( File.Exists( path+ext ) )
+			using ( var stream = File.Open(path+ext,FileMode.Open,FileAccess.Read) )
+			try
 			{
+				anyexisted = true;
 				var bf = new BinaryFormatter();
-				var book = (Book)bf.Deserialize(stream);
+				var book = (Book)bf.Deserialize(stream,null);
 				book.Path = path;
 				book.SizeInBytes = stream.Position;
 				return book;
-			} else {
-				return new Book() { Path=path };
-			}
+			} catch ( Exception ) {}
+
+			if (anyexisted) throw new Exception( "Error loading existing files" );
+			return new Book() { Path=path };
 		}
 
 		[NonSerialized] public long SizeInBytes = 0;
 		public void SaveToDisk() {
-			using ( var stream = File.Open(Path,FileMode.OpenOrCreate,FileAccess.Write) ) {
+			if ( File.Exists(Path+".new") && !File.Exists(Path) ) File.Move(Path+".new",Path);
+
+			using ( var stream = File.Open(Path+".new",FileMode.OpenOrCreate,FileAccess.Write) ) {
 				var bf = new BinaryFormatter();
 				bf.Serialize( stream, this );
 				SizeInBytes = stream.Position;
 			}
+
+			using ( var stream = File.Open(Path+".new",FileMode.Open,FileAccess.Read) ) {
+				var bf = new BinaryFormatter();
+				var book = (Book)bf.Deserialize(stream); // verify savefile
+			}
+
+			File.Delete(Path);
+			File.Move(Path+".new",Path);
 		}
 
 		[OnDeserialized] void FixupBackgroundLock( StreamingContext sc ) { Background = new object(); }
