@@ -6,6 +6,7 @@ using System.Linq;
 using System.Windows.Forms;
 using Microsoft.StylusInput;
 using Microsoft.StylusInput.PluginData;
+using System.Media;
 
 namespace SketchBook {
 	class StylusMouseMux : IStylusSyncPlugin, IStylusAsyncPlugin, IDisposable {
@@ -72,6 +73,7 @@ namespace SketchBook {
 						StylusStrokes.Dequeue();
 						stylus_stroke = StylusStrokes.Count>0 ? StylusStrokes.Peek() : null;
 					}
+					SystemSounds.Beep.Play();
 				}
 
 				if ( mouse_stroke != null ) {

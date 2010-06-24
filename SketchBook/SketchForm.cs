@@ -68,7 +68,7 @@ namespace SketchBook {
 
 			Book.OpenPage.DrawTo( fx, ClientSize.Width, ClientSize.Height );
 			fx.TranslateTransform( ClientSize.Width/2f, ClientSize.Height/2f );
-			if ( stroke != null ) {
+			if ( stroke != null && stroke.MouseButtons == MouseButtons.Left ) {
 				Debug.Assert(!stroke.Completed);
 				new PenStroke() { Points = stroke.Points.Select(p=>ToCanvasCoordinate(p)).ToList() }.DrawTo(fx);
 			}
