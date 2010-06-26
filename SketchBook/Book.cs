@@ -6,6 +6,7 @@ using System.Runtime.Serialization.Formatters.Binary;
 using System.Linq;
 using System.Threading;
 using System.Runtime.Serialization;
+using System.Runtime.InteropServices;
 
 namespace SketchBook {
 	[Serializable] class Book {

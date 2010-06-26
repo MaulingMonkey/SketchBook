@@ -16,8 +16,9 @@ namespace SketchBook {
 		PointF ToCanvasCoordinate( PointF screencoord ) { return new PointF( screencoord.X - ClientSize.Width/2, screencoord.Y - ClientSize.Height/2 ); }
 		StylusMouseMux SMM;
 
-		public SketchForm() {
-			Book = Book.CreateOrLoad( Path.Combine(Application.UserAppDataPath,"default.book") );
+		public SketchForm( string path ) {
+			if ( !Path.IsPathRooted(path) ) path = Path.Combine(Application.UserAppDataPath,path);
+			Book = Book.CreateOrLoad( path );
 			BackColor       = Color.White;
 			DoubleBuffered  = true;
 			ForeColor       = Color.Gray;
@@ -128,8 +129,8 @@ namespace SketchBook {
 			base.OnMouseDown(e);
 		}
 
-		[STAThread] static void Main() {
-			Application.Run( new SketchForm() );
+		[STAThread] static void Main( string[] args ) {
+			Application.Run( new SketchForm( args.Length == 0 ? "default.book" : args[0] ) );
 		}
 	}
 }

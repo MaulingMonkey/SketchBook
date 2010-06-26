@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.Media;
 using System.Windows.Forms;
 using Microsoft.StylusInput;
 using Microsoft.StylusInput.PluginData;
-using System.Media;
 
 namespace SketchBook {
 	class StylusMouseMux : IStylusSyncPlugin, IStylusAsyncPlugin, IDisposable {
