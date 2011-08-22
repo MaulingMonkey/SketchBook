@@ -41,12 +41,12 @@ namespace SketchBook {
 			base.Dispose(disposing);
 		}
 
+		bool save = false;
 		TimeSpan Profiling_LastSaveTook = TimeSpan.Zero;
 		protected override void OnPaint( PaintEventArgs e ) {
 			var fx = e.Graphics;
 
 			var stroke = SMM.NextStroke;
-			bool save = false;
 			while ( stroke != null && stroke.Completed ) {
 				SMM.RemoveStroke();
 
@@ -60,14 +60,14 @@ namespace SketchBook {
 				}
 				stroke = SMM.NextStroke;
 			}
+
+			Book.OpenPage.DrawTo( fx, ClientSize.Width, ClientSize.Height );
 			if (save) {
 				//var a = DateTime.Now;
 				Book.BackgroundSaveToDisk();
 				//var b = DateTime.Now;
 				//Profiling_LastSaveTook = b-a;
 			}
-
-			Book.OpenPage.DrawTo( fx, ClientSize.Width, ClientSize.Height );
 			fx.TranslateTransform( ClientSize.Width/2f, ClientSize.Height/2f );
 			if ( stroke != null && stroke.MouseButtons == MouseButtons.Left ) {
 				Debug.Assert(!stroke.Completed);
@@ -100,9 +100,9 @@ namespace SketchBook {
 
 		protected override void OnKeyDown( KeyEventArgs e ) {
 			switch ( e.KeyData ) {
-			case Keys.Control | Keys.Z: Book.OpenPage.Undo(); Book.SaveToDisk(); Invalidate(); break;
-			case Keys.Control | Keys.Y: Book.OpenPage.Redo(); Book.SaveToDisk(); Invalidate(); break;
-			case Keys.Control | Keys.R: Book.OpenPage.Redo(); Book.SaveToDisk(); Invalidate(); break;
+			case Keys.Control | Keys.Z: Book.OpenPage.Undo(); save = true; Invalidate(); break;
+			case Keys.Control | Keys.Y: Book.OpenPage.Redo(); save = true; Invalidate(); break;
+			case Keys.Control | Keys.R: Book.OpenPage.Redo(); save = true; Invalidate(); break;
 			case Keys.Left:  Book.PreviousPage(); Invalidate(); break;
 			case Keys.Right: Book.NextPage();     Invalidate(); break;
 			}

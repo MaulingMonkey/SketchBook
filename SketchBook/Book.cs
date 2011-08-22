@@ -1,16 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing.Imaging;
 using System.IO;
-using System.Media;
-using System.Runtime.Serialization.Formatters.Binary;
 using System.Linq;
-using System.Threading;
+using System.Media;
 using System.Runtime.Serialization;
-using System.Runtime.InteropServices;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.Threading;
 
 namespace SketchBook {
-	[Serializable] class Book {
+	[Serializable] class Book : IDisposable {
 		public List<Page> Pages = new List<Page>() { new Page() };
+
+		public void Dispose() {
+			foreach ( var page in Pages ) page.Dispose();
+		}
+
 		int OpenPageIndex = 0;
 		public Page OpenPage { get {
 			return OpenPageIndex==-1 ? null : Pages[OpenPageIndex];
@@ -61,7 +66,7 @@ namespace SketchBook {
 		}
 
 		[NonSerialized] public long SizeInBytes = 0;
-		public void SaveToDisk() {
+		void SaveToDisk() {
 			if ( File.Exists(Path+".new") && !File.Exists(Path) ) File.Move(Path+".new",Path);
 
 			using ( var stream = File.Open(Path+".new",FileMode.OpenOrCreate,FileAccess.Write) ) {
@@ -77,12 +82,23 @@ namespace SketchBook {
 
 			File.Delete(Path);
 			File.Move(Path+".new",Path);
+
+			for ( int i=0 ; i<Pages.Count ; ++i ) {
+				var page = Pages[i];
+				if ( page._SerializationHack_Cache != null ) {
+					page._SerializationHack_Cache.Save(string.Format("{0}.{1}.png",Path,i+1),ImageFormat.Png);
+				}
+			}
 		}
 
-		[OnDeserialized] void FixupBackgroundLock( StreamingContext sc ) { Background = new object(); }
+		[OnDeserialized] void FixupAfterDeserialize( StreamingContext sc ) {
+			Background = new object();
+			ToDispose = new List<IDisposable>();
+		}
 
 		[NonSerialized] object Background = new object();
 		[NonSerialized] Book SerializeNext;
+		[NonSerialized] List<IDisposable> ToDispose = new List<IDisposable>();
 		public void BackgroundSaveToDisk() {
 			var clone = new Book()
 				{ Pages = Pages.Select(page=>page.Clone()).ToList()
@@ -100,10 +116,16 @@ namespace SketchBook {
 						lock ( Background ) {
 							SizeInBytes = book.SizeInBytes;
 							SerializeNext = book = (book==SerializeNext) ? null : SerializeNext;
+
+							if ( book==null ) {
+								foreach ( var d in ToDispose ) using ( d ) {}
+								ToDispose.Clear();
+							}
 						}
 					}
 				});
 				SerializeNext = clone;
+				ToDispose.Add(clone);
 			}
 		}
 	}

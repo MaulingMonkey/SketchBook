@@ -23,17 +23,23 @@ namespace SketchBook {
 		}
 	}
 
-	[Serializable] class Page {
+	[Serializable] class Page : IDisposable {
 		List<PenStroke> Strokes = new List<PenStroke>();
 		public int _DebugStats_StrokesCount { get { return Strokes.Count; } }
 		[OptionalField] List<PenStroke> RedoHistory = new List<PenStroke>();
 		[NonSerialized] Bitmap Cache;
+		public Bitmap _SerializationHack_Cache { get { return Cache; }}
+
+		public void Dispose() {
+			using ( Cache ) {}
+			Cache = null;
+		}
 
 		public Page Clone() {
 			return new Page()
 				{ Strokes = new List<PenStroke>(Strokes)
 				, RedoHistory = new List<PenStroke>(RedoHistory)
-				, Cache = null
+				, Cache = (Cache==null) ? null : Cache.Clone() as Bitmap
 				};
 		}
 
